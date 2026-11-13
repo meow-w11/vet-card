@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vet Card</title>
+<meta name="theme-color" content="#1E1B29">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Vet Card">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700&family=Figtree:wght@400;500;600&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+/* Layout: single phone column — pet list → pet profile (ID card, active meds, history), bottom sheets for edits */
+:root{
+  --bg:#F2F1F6; --surface:#FFFFFF; --sunk:#E8E6EF; --ink:#1C1A24; --muted:#615D70; --line:#DAD7E3;
+  --amber:#9A5F00; --amber-fill:#F2B33D; --amber-ink:#2A1A00;
+  --due:#B4380B; --due-bg:#FCE7DD; --ok:#2B7349; --ok-bg:#DFF1E5;
+  --card-ink:#F4F1FA; --card-bg:#1E1B29;
+  --f-display:"Bricolage Grotesque",ui-sans-serif,system-ui,sans-serif;
+  --f-body:"Figtree",ui-sans-serif,system-ui,sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#13121A; --surface:#1D1B26; --sunk:#262331; --ink:#ECE9F3; --muted:#A39FB3; --line:#332F40;
+  --amber:#F2B33D; --amber-fill:#F2B33D; --amber-ink:#2A1A00;
+  --due:#FF9A6B; --due-bg:#3A2118; --ok:#7FD39F; --ok-bg:#16301F;
+  --card-ink:#F4F1FA; --card-bg:#2A2638; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#13121A; --surface:#1D1B26; --sunk:#262331; --ink:#ECE9F3; --muted:#A39FB3; --line:#332F40;
+  --amber:#F2B33D; --amber-fill:#F2B33D; --amber-ink:#2A1A00;
+  --due:#FF9A6B; --due-bg:#3A2118; --ok:#7FD39F; --ok-bg:#16301F;
+  --card-ink:#F4F1FA; --card-bg:#2A2638; color-scheme:dark}
+*{box-sizing:border-box}
+html{-webkit-tap-highlight-color:transparent}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font:15px/1.5 var(--f-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-top:calc(18px + env(safe-area-inset-top,0px));padding-bottom:calc(96px + env(safe-area-inset-bottom,0px))}
+.wrap{max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:22px}
+h1,h2,h3{font-family:var(--f-display);margin:0;text-wrap:balance;letter-spacing:-.01em}
+h1{font-size:28px;font-weight:700}
+h2{font-size:13px;font-weight:600;font-family:var(--f-body);text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.ghost{background:none;border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
+.back{border:none;background:none;padding:6px 0;font-weight:600;color:var(--muted);display:inline-flex;gap:6px;align-items:center}
+.section{display:flex;flex-direction:column;gap:10px}
+.sec-head{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.link{border:none;background:none;color:var(--amber);font-weight:600;padding:4px 0;font-size:14px}
+
+/* pet list */
+.petrow{display:flex;gap:14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;text-align:left;width:100%}
+.avatar{width:58px;height:58px;border-radius:50%;background:var(--card-bg);flex:none;overflow:hidden;display:grid;place-items:center;color:var(--amber-fill);font-family:var(--f-display);font-weight:700;font-size:22px}
+.avatar img{width:100%;height:100%;object-fit:cover}
+.petrow .info{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.petrow .name{font-family:var(--f-display);font-weight:700;font-size:20px}
+.quick{display:flex;flex-direction:column;gap:8px}
+.petrow.memorial{background:none;border-style:dashed}
+.petrow.memorial .avatar img{filter:grayscale(.5)}
+
+/* id card */
+.idcard{background:var(--card-bg);color:var(--card-ink);border-radius:22px;padding:18px;display:flex;flex-direction:column;gap:14px;position:relative;overflow:hidden}
+.idcard::after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;border:22px solid rgba(242,179,61,.12)}
+.idhead{display:flex;gap:14px;align-items:center;position:relative;z-index:1}
+.idhead .avatar{width:72px;height:72px;border:3px solid var(--amber-fill);background:#0E0D12;font-size:28px}
+.idhead .avatar label{cursor:pointer;width:100%;height:100%;display:grid;place-items:center}
+.idname{font-family:var(--f-display);font-size:30px;font-weight:700;line-height:1.05}
+.idsub{color:#BDB7CC;font-size:14px}
+.tag{font-family:var(--f-mono);font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--amber-fill)}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 16px;position:relative;z-index:1}
+.fact{min-width:0}
+.fact dt{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9F99B0}
+.fact dd{margin:2px 0 0;font-weight:500;overflow-wrap:anywhere}
+.fact.wide{grid-column:1/-1}
+.idfoot{display:flex;justify-content:space-between;align-items:center;gap:10px;position:relative;z-index:1;flex-wrap:wrap}
+.idcard .ghost{border-color:#4A4459;color:var(--card-ink)}
+.copybtn{background:none;border:none;color:var(--amber-fill);font-weight:600;padding:0;font-size:13px}
+
+/* med card */
+.med{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:16px;display:flex;flex-direction:column;gap:12px}
+.medtop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}
+.medname{font-family:var(--f-display);font-size:20px;font-weight:700}
+.medsub{color:var(--muted);font-size:14px}
+.pill{font-size:12px;font-weight:600;padding:4px 10px;border-radius:999px;white-space:nowrap;background:var(--sunk);color:var(--muted)}
+.pill.due{background:var(--due-bg);color:var(--due)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.track{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.dot{width:26px;height:26px;border-radius:50%;border:2px solid var(--line);display:grid;place-items:center;font-family:var(--f-mono);font-size:11px;color:var(--muted)}
+.dot.done{background:var(--amber-fill);border-color:var(--amber-fill);color:var(--amber-ink)}
+.dot.next{border-color:var(--amber);color:var(--amber);border-style:dashed}
+.dot-sep{font-size:12px;color:var(--muted);padding:0 4px}
+.medmeta{display:grid;grid-template-columns:1fr 1fr;gap:8px;font-size:14px}
+.medmeta div{background:var(--sunk);border-radius:12px;padding:8px 10px;min-width:0}
+.medmeta b{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.medmeta span{font-variant-numeric:tabular-nums}
+.actions{display:flex;gap:8px}
+.give{flex:1;background:var(--amber-fill);color:var(--amber-ink);border:none;border-radius:14px;padding:13px;font-weight:700;font-size:16px}
+.give:disabled{opacity:.45;cursor:default}
+.second{background:none;border:1px solid var(--line);border-radius:14px;padding:13px 14px;font-weight:600;font-size:14px;color:var(--muted)}
+
+/* history */
+.hist{background:var(--surface);border:1px solid var(--line);border-radius:18px;overflow:hidden}
+.day{padding:10px 16px 4px;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;background:var(--sunk)}
+.entry{display:flex;gap:12px;align-items:center;padding:11px 16px;border-top:1px solid var(--line);width:100%;background:none;border-left:none;border-right:none;border-bottom:none;text-align:left}
+.day+.entry{border-top:none}
+.entry time{font-family:var(--f-mono);font-size:12px;color:var(--muted);width:62px;flex:none}
+.entry .what{flex:1;min-width:0}
+.entry .what small{display:block;color:var(--muted)}
+.miss{color:var(--due);font-weight:600}
+.empty{padding:18px 16px;color:var(--muted)}
+.notice{background:var(--surface);border:1px dashed var(--line);border-radius:16px;padding:16px;color:var(--muted)}
+
+/* sheet */
+.scrim{position:fixed;inset:0;background:rgba(10,9,14,.5);z-index:20;display:flex;align-items:flex-end;justify-content:center}
+.sheet{background:var(--surface);width:100%;max-width:560px;max-height:90vh;overflow:auto;border-radius:22px 22px 0 0;
+  padding:20px max(18px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(18px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:14px}
+.sheet h3{font-size:22px}
+.field{display:flex;flex-direction:column;gap:5px}
+.field label{font-size:13px;font-weight:600;color:var(--muted)}
+.field input,.field select,.field textarea{font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:12px;padding:10px 12px;width:100%}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.inline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:14px}
+.inline input{width:70px;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:8px}
+.check{display:flex;gap:8px;align-items:center;font-size:14px}
+.sheet .actions{margin-top:4px}
+.danger{color:var(--due)}
+
+.signin{width:100%;background:var(--card-bg);color:var(--card-ink);border:none;border-radius:20px;padding:20px;text-align:left;display:flex;flex-direction:column;gap:4px}
+.signin b{font-family:var(--f-display);font-size:22px}
+.signin span{color:#BDB7CC;font-size:14px}
+.acct{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;color:var(--muted);font-size:13px;margin-top:8px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);border-radius:14px;padding:12px 16px;display:flex;gap:16px;align-items:center;z-index:30;max-width:calc(100% - 32px);box-shadow:0 8px 30px rgba(0,0,0,.25)}
+.toast button{background:none;border:none;color:var(--amber-fill);font-weight:700;padding:0}
+@media (prefers-reduced-motion:no-preference){.sheet{animation:up .22s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.6}}}
+</style>
+</head>
+<body>
+
+<div class="wrap" id="app"><div class="notice">Loading records…</div></div>
+<div id="layer"></div>
+
+<script src="firebase-app-compat.js"></script>
+<script src="firebase-auth-compat.js"></script>
+<script src="firebase-firestore-compat.js"></script>
+<script>
+const S={gate:"starting",user:null,online:navigator.onLine,pets:[],meds:[],logs:[],view:"home",petId:null,db:null,canWrite:true,loaded:{pets:false,meds:false,logs:false},err:null};
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const DAY=864e5;
+const startOfDay=d=>{const x=new Date(d);x.setHours(0,0,0,0);return x};
+const ymd=d=>{const x=new Date(d);return x.getFullYear()+"-"+String(x.getMonth()+1).padStart(2,"0")+"-"+String(x.getDate()).padStart(2,"0")};
+const fmtDate=d=>new Date(d).toLocaleDateString(undefined,{weekday:"short",month:"short",day:"numeric"});
+const fmtTime=d=>new Date(d).toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"});
+const parseYmd=s=>{const [y,m,d]=s.split("-").map(Number);return new Date(y,m-1,d)};
+
+function ageText(p){
+  if(!p.birthday) return "Unknown";
+  const months=Math.max(0,Math.floor((Date.now()-parseYmd(p.birthday))/ (30.44*DAY)));
+  const t=months<12?`${months} month${months===1?"":"s"}`:`${Math.floor(months/12)} yr ${months%12} mo`;
+  return (p.birthdayEstimated?"~":"")+t;
+}
+function phaseText(ph){
+  const word=e=>e===1?"daily":e===7?"weekly":e===14?"every 2 weeks":(e===30||e===31)?"monthly":`every ${e} days`;
+  return ph.map((p,i)=>(i?"then ":"")+word(p.every)+(p.count?` × ${p.count}`:"")).join(", ").replace(/^./,c=>c.toUpperCase());
+}
+function medStatus(m){
+  const given=S.logs.filter(l=>l.medId===m.id&&l.status==="given").sort((a,b)=>a.at.localeCompare(b.at));
+  const n=given.length, ph=m.phases||[{every:7,count:0}];
+  // which phase does dose k (1-based) fall in
+  const phaseOf=k=>{let acc=0;for(let i=0;i<ph.length;i++){if(!ph[i].count||k<=acc+ph[i].count)return {i,idx:k-acc};acc+=ph[i].count}return null};
+  const nextPh=phaseOf(n+1);
+  const last=n?given[n-1]:null;
+  if(!nextPh) return {n,last,done:true,phaseOf};
+  let due;
+  if(!n) due=m.start?parseYmd(m.start):startOfDay(new Date());
+  else due=new Date(startOfDay(last.at).getTime()+ph[nextPh.i].every*DAY);
+  const diff=Math.round((startOfDay(due)-startOfDay(new Date()))/DAY);
+  let pill,cls;
+  if(diff<0){pill=`Overdue ${-diff} day${diff===-1?"":"s"}`;cls="due"}
+  else if(diff===0){pill=n?"Due today":"Ready for dose 1";cls="due"}
+  else if(diff===1){pill="Due tomorrow";cls="ok"}
+  else {pill=`Due in ${diff} days`;cls="ok"}
+  return {n,last,due,diff,pill,cls,nextPh,phaseOf,done:false};
+}
+
+/* ---------- render ---------- */
+function render(){
+  const app=$("#app");
+  if(S.gate){app.innerHTML=renderGate();return}
+  if(S.err){app.innerHTML=`<div class="notice">${esc(S.err)}</div>`;return}
+  if(!S.loaded.pets||!S.loaded.meds||!S.loaded.logs){app.innerHTML=`<div class="notice">Loading records…</div>`;return}
+  if(S.view==="pet"&&S.pets.find(p=>p.id===S.petId)) app.innerHTML=renderPet(S.pets.find(p=>p.id===S.petId));
+  else {S.view="home";app.innerHTML=renderHome()}
+}
+function renderGate(){
+  const top=`<div class="top"><h1>Vet Card</h1></div>`;
+  if(S.gate==="starting") return top+`<div class="notice">Starting…</div>`;
+  if(S.gate==="denied") return top+`<div class="notice"><b>${esc(S.user&&S.user.email||"This account")}</b> can't open these records. Sign in with the Google account you use for Palengke List.</div><button class="ghost" data-act="signout">Use a different account</button>`;
+  return top+`<button class="signin" data-act="signin"><b>Sign in with Google</b><span>Your cats' cards, meds and history sync between phones</span></button>${S.authErr?`<div class="notice">${esc(S.authErr)}</div>`:""}`;
+}
+function avatar(p){return `<div class="avatar">${p.photo?`<img src="${esc(p.photo)}" alt="">`:esc((p.name||"?")[0])}</div>`}
+function renderHome(){
+  const living=S.pets.filter(p=>!p.passedOn), gone=S.pets.filter(p=>p.passedOn);
+  const memo=gone.map(p=>`<button class="petrow memorial" data-act="open" data-id="${p.id}">${avatar(p)}<div class="info"><span class="name">${esc(p.name)}</span><span class="medsub">Passed ${esc(fmtDate(parseYmd(p.passedOn)))}${p.passedCause?" · "+esc(p.passedCause):""}</span></div></button>`).join("");
+  const rows=living.map(p=>{
+    const meds=S.meds.filter(m=>m.petId===p.id&&m.active!==false).map(m=>({m,s:medStatus(m)})).filter(x=>!x.s.done)
+      .sort((a,b)=>a.s.due-b.s.due);
+    const top=meds[0];
+    const dueNow=meds.filter(x=>x.s.diff<=0);
+    return `<div class="quick">
+      <button class="petrow" data-act="open" data-id="${p.id}">
+        ${avatar(p)}
+        <div class="info"><span class="name">${esc(p.name)}</span>
+        <span class="medsub">${esc([p.species,p.sex,ageText(p)].filter(x=>x&&x!=="Unknown").join(" · "))}</span>
+        ${top?`<span><span class="pill ${top.s.cls}">${esc(top.m.name)} · ${esc(top.s.pill)}</span></span>`:`<span class="medsub">No active meds</span>`}
+        </div></button>
+      ${dueNow.map(x=>`<button class="give" data-act="give" data-id="${x.m.id}" ${S.canWrite?"":"disabled"}>Give ${esc(x.m.name)} to ${esc(p.name)}</button>`).join("")}
+    </div>`}).join("");
+  return `<div class="top"><h1>Vet Card</h1>${S.canWrite?`<button class="ghost" data-act="addpet">Add pet</button>`:""}</div>
+  ${S.pets.length?rows:`<div class="notice">No pets yet. Tap <b>Add pet</b> to make the first card.</div>`}
+  ${gone.length?`<div class="section"><h2>In memory</h2>${memo}</div>`:""}
+  <div class="acct"><span>${S.online?"Synced":"Offline · changes sync when you're back online"} · ${esc(S.user?S.user.email:"")}</span><button class="link" data-act="signout">Sign out</button></div>`;
+}
+function renderPet(p){
+  const meds=S.meds.filter(m=>m.petId===p.id);
+  const active=meds.filter(m=>m.active!==false&&!medStatus(m).done);
+  const ended=meds.filter(m=>!active.includes(m));
+  const logs=S.logs.filter(l=>l.petId===p.id).sort((a,b)=>b.at.localeCompare(a.at));
+  const f=(k,v,wide)=>`<div class="fact${wide?" wide":""}"><dt>${k}</dt><dd>${esc(v||"—")}</dd></div>`;
+  return `<button class="back" data-act="home">← All pets</button>
+  <div class="idcard">
+    <div class="idhead">
+      <div class="avatar"><label for="photo" title="Change photo">${p.photo?`<img src="${esc(p.photo)}" alt="${esc(p.name)}">`:esc((p.name||"?")[0])}</label></div>
+      <input id="photo" type="file" accept="image/*" hidden ${S.canWrite?"":"disabled"}>
+      <div><div class="tag">${p.passedOn?"In loving memory":"Vet card"}</div><div class="idname">${esc(p.name)}</div>
+      <div class="idsub">${esc([p.species,p.sex,ageText(p)].filter(x=>x&&x!=="Unknown").join(" · ")||"Details to add")}</div></div>
+    </div>
+    <dl class="facts" style="margin:0">
+      ${p.passedOn?f("Passed away",fmtDate(parseYmd(p.passedOn))+(p.passedCause?" · "+p.passedCause:""),true):""}
+      ${f("Color / markings",p.color)}${f("Weight",p.weight?p.weight+" kg":"Not weighed yet")}
+      ${f("Neutered",p.neutered)}${f("Microchip",p.microchip)}
+      ${f("Conditions",p.conditions,true)}
+      ${f("Vet",p.vet,true)}
+      ${p.vetPhone?f("Vet phone",p.vetPhone,true):""}
+      ${p.notes?f("Notes",p.notes,true):""}
+    </dl>
+    <div class="idfoot"><span class="idsub">Given by ${esc(p.caretaker||"—")}</span>
+      ${S.canWrite?`<button class="ghost" data-act="editpet" data-id="${p.id}">Edit details</button>`:""}</div>
+  </div>
+
+  ${p.passedOn?"":`<div class="section"><div class="sec-head"><h2>Active meds</h2>${S.canWrite?`<button class="link" data-act="addmed">+ Add med</button>`:""}</div>
+    ${active.length?active.map(renderMed).join(""):`<div class="notice">No active meds. Add one to start tracking doses.</div>`}
+  </div>`}
+  ${ended.length?`<div class="section"><h2>Finished or paused</h2>${ended.map(m=>`<button class="entry hist" style="border-radius:14px;border:1px solid var(--line)" data-act="editmed" data-id="${m.id}"><span class="what"><b>${esc(m.name)}</b><small>${esc(phaseText(m.phases||[]))} · ${m.active===false?"Paused":"Course complete"}</small></span></button>`).join("")}</div>`:""}
+
+  <div class="section"><h2>History</h2><div class="hist">${renderHist(logs)}</div></div>`;
+}
+function renderMed(m){
+  const s=medStatus(m), ph=m.phases||[];
+  // dose tracker: show dots for finite phases, a counter for the repeating phase
+  let track="";
+  let acc=0;
+  ph.forEach((p,i)=>{
+    if(i) track+=`<span class="dot-sep">then</span>`;
+    if(p.count){
+      for(let k=1;k<=p.count;k++){const d=acc+k;track+=`<span class="dot ${d<=s.n?"done":d===s.n+1?"next":""}">${k}</span>`}
+      acc+=p.count;
+    } else {
+      const done=Math.max(0,s.n-acc);
+      track+=`<span class="pill">${phaseText([p]).replace(/ × .*/,"")} · ${done} given</span>`;
+    }
+  });
+  const label=s.done?"Course complete":(()=>{const p=ph[s.nextPh.i];return p.count?`Next: dose ${s.nextPh.idx} of ${p.count}`:`Next: dose ${s.n+1}`})();
+  return `<div class="med">
+    <div class="medtop"><div><div class="medname">${esc(m.name)}</div>
+      <div class="medsub">${esc([m.dose||"Dose not set",phaseText(ph)].join(" · "))}</div></div>
+      <span class="pill ${s.cls||""}">${esc(s.pill||"Done")}</span></div>
+    <div class="track">${track}</div>
+    <div class="medmeta">
+      <div><b>Last given</b><span>${s.last?esc(fmtDate(s.last.at)+", "+fmtTime(s.last.at)):"Not yet"}</span></div>
+      <div><b>${esc(label)}</b><span>${s.due?esc(fmtDate(s.due)):"—"}</span></div>
+    </div>
+    ${m.notes?`<div class="medsub">${esc(m.notes)}</div>`:""}
+    ${S.canWrite?`<div class="actions">
+      <button class="give" data-act="give" data-id="${m.id}">Given</button>
+      <button class="second" data-act="missed" data-id="${m.id}">Couldn't give</button>
+      <button class="second" data-act="editmed" data-id="${m.id}" aria-label="Edit ${esc(m.name)}">Edit</button></div>`:""}
+  </div>`;
+}
+function renderHist(logs){
+  if(!logs.length) return `<div class="empty">Doses you log show up here.</div>`;
+  let out="",cur="";
+  logs.forEach(l=>{
+    const d=ymd(l.at);
+    if(d!==cur){cur=d;out+=`<div class="day">${esc(d===ymd(new Date())?"Today":fmtDate(l.at))}</div>`}
+    const m=S.meds.find(x=>x.id===l.medId);
+    out+=`<button class="entry" data-act="editlog" data-id="${l.id}"><time>${esc(fmtTime(l.at))}</time>
+      <span class="what">${l.status==="missed"?`<span class="miss">Not given</span> · `:""}<b>${esc(m?m.name:"Deleted med")}</b>${l.dose?` · ${esc(l.dose)}`:""}
+      ${l.note?`<small>${esc(l.note)}</small>`:""}</span></button>`;
+  });
+  return out;
+}
+
+/* ---------- sheets ---------- */
+function sheet(html){$("#layer").innerHTML=`<div class="scrim" data-act="close"><form class="sheet" id="sheet" onsubmit="return false">${html}</form></div>`;const i=$("#sheet input,#sheet textarea");i&&i.focus()}
+function closeSheet(){$("#layer").innerHTML=""}
+function petForm(p={}){
+  sheet(`<h3>${p.id?"Edit "+esc(p.name):"New pet"}</h3>
+  <div class="row2"><div class="field"><label for="f-name">Name</label><input id="f-name" value="${esc(p.name)}" required></div>
+  <div class="field"><label for="f-species">Species</label><input id="f-species" value="${esc(p.species||"Cat")}"></div></div>
+  <div class="row2"><div class="field"><label for="f-sex">Sex</label><select id="f-sex">${["","Female","Male"].map(o=>`<option ${o===(p.sex||"")?"selected":""} value="${o}">${o||"Not sure"}</option>`).join("")}</select></div>
+  <div class="field"><label for="f-weight">Weight (kg)</label><input id="f-weight" inputmode="decimal" value="${esc(p.weight)}" placeholder="e.g. 0.9"></div></div>
+  <div class="row2"><div class="field"><label for="f-bday">Birthday</label><input id="f-bday" type="date" value="${esc(p.birthday)}"></div>
+  <div class="field"><label>&nbsp;</label><label class="check"><input type="checkbox" id="f-est" ${p.birthdayEstimated||!p.id?"checked":""}> Estimated</label></div></div>
+  <div class="field"><label for="f-color">Color / markings</label><input id="f-color" value="${esc(p.color)}"></div>
+  <div class="row2"><div class="field"><label for="f-neut">Neutered</label><select id="f-neut">${["No","Yes","Not sure"].map(o=>`<option ${o===(p.neutered||"No")?"selected":""}>${o}</option>`).join("")}</select></div>
+  <div class="field"><label for="f-chip">Microchip</label><input id="f-chip" value="${esc(p.microchip||"None")}"></div></div>
+  <div class="field"><label for="f-cond">Conditions / allergies</label><input id="f-cond" value="${esc(p.conditions)}"></div>
+  <div class="field"><label for="f-vet">Vet clinic</label><input id="f-vet" value="${esc(p.vet)}"></div>
+  <div class="field"><label for="f-vetph">Vet phone</label><input id="f-vetph" inputmode="tel" value="${esc(p.vetPhone)}"></div>
+  <div class="field"><label for="f-care">Meds given by</label><input id="f-care" value="${esc(p.caretaker)}"></div>
+  <div class="field"><label for="f-notes">Notes</label><textarea id="f-notes" rows="2">${esc(p.notes)}</textarea></div>
+  ${p.id?`<div class="row2"><div class="field"><label for="f-passed">Passed away on</label><input id="f-passed" type="date" value="${esc(p.passedOn)}"></div>
+  <div class="field"><label for="f-cause">Cause</label><input id="f-cause" value="${esc(p.passedCause)}"></div></div>`:""}
+  <div class="actions"><button class="give" data-act="savepet" data-id="${p.id||""}">Save</button><button class="second" type="button" data-act="close">Cancel</button></div>
+  ${p.id?`<button class="second danger" type="button" data-act="delpet" data-id="${p.id}">Delete this pet</button>`:""}`);
+}
+function medForm(m={}){
+  const ph=m.phases||[{every:7,count:4},{every:30,count:0}];
+  const p1=ph[0],p2=ph[1];
+  sheet(`<h3>${m.id?"Edit "+esc(m.name):"New med"}</h3>
+  <div class="field"><label for="m-name">Medicine</label><input id="m-name" value="${esc(m.name)}" placeholder="e.g. Vermifuge" required></div>
+  <div class="field"><label for="m-dose">Dose</label><input id="m-dose" value="${esc(m.dose)}" placeholder="e.g. 0.5 ml, ½ tablet"></div>
+  <div class="field"><label>Schedule</label>
+    <div class="inline">Every <input id="m-e1" type="number" min="1" value="${p1.every}"> days for <input id="m-c1" type="number" min="0" value="${p1.count||0}"> doses <small class="medsub">(0 = keep repeating)</small></div>
+    <label class="check"><input type="checkbox" id="m-has2" ${p2?"checked":""}> Then switch to</label>
+    <div class="inline">every <input id="m-e2" type="number" min="1" value="${p2?p2.every:30}"> days, <input id="m-c2" type="number" min="0" value="${p2?p2.count||0:0}"> doses <small class="medsub">(0 = ongoing)</small></div>
+  </div>
+  <div class="field"><label for="m-start">First dose date</label><input id="m-start" type="date" value="${esc(m.start||ymd(new Date()))}"></div>
+  <div class="field"><label for="m-notes">Notes</label><textarea id="m-notes" rows="2" placeholder="e.g. Give with food">${esc(m.notes)}</textarea></div>
+  ${m.id?`<label class="check"><input type="checkbox" id="m-active" ${m.active!==false?"checked":""}> Active</label>`:""}
+  <div class="actions"><button class="give" data-act="savemed" data-id="${m.id||""}">Save</button><button class="second" type="button" data-act="close">Cancel</button></div>
+  ${m.id?`<button class="second danger" type="button" data-act="delmed" data-id="${m.id}">Delete med and its history</button>`:""}`);
+}
+function logForm(l){
+  const m=S.meds.find(x=>x.id===l.medId);
+  const local=new Date(new Date(l.at)-new Date().getTimezoneOffset()*6e4).toISOString().slice(0,16);
+  sheet(`<h3>${esc(m?m.name:"Dose")}</h3>
+  <div class="field"><label for="l-at">Date and time</label><input id="l-at" type="datetime-local" value="${local}"></div>
+  <div class="field"><label for="l-status">Status</label><select id="l-status"><option value="given" ${l.status==="given"?"selected":""}>Given</option><option value="missed" ${l.status==="missed"?"selected":""}>Couldn't give</option></select></div>
+  <div class="field"><label for="l-dose">Dose given</label><input id="l-dose" value="${esc(l.dose)}"></div>
+  <div class="field"><label for="l-note">Note</label><input id="l-note" value="${esc(l.note)}" placeholder="e.g. Spat some out"></div>
+  ${S.canWrite?`<div class="actions"><button class="give" data-act="savelog" data-id="${l.id}">Save</button><button class="second" type="button" data-act="close">Cancel</button></div>
+  <button class="second danger" type="button" data-act="dellog" data-id="${l.id}">Delete entry</button>`:`<button class="second" type="button" data-act="close">Close</button>`}`);
+}
+
+/* ---------- toast ---------- */
+let toastT;
+function toast(msg,undo){
+  clearTimeout(toastT);
+  const t=document.createElement("div");t.className="toast";t.innerHTML=`<span>${esc(msg)}</span>${undo?`<button type="button">Undo</button>`:""}`;
+  document.querySelectorAll(".toast").forEach(x=>x.remove());document.body.appendChild(t);
+  if(undo) t.querySelector("button").onclick=()=>{t.remove();undo()};
+  toastT=setTimeout(()=>t.remove(),5000);
+}
+
+/* ---------- writes ---------- */
+function w(fn,okMsg){
+  let p;try{p=Promise.resolve(fn())}catch(e){p=Promise.reject(e)}
+  if(okMsg)toast(okMsg);
+  p.catch(e=>{
+    if(e&&e.code==="permission-denied"){S.gate="denied";render()}
+    else toast("Couldn't save ("+((e&&e.code)||"error")+"). Try again.");
+  });
+  return Promise.resolve();
+}
+const v=id=>{const el=document.getElementById(id);return el?el.value.trim():""};
+const num=(id,d)=>{const n=parseInt(v(id),10);return isNaN(n)?d:n};
+
+async function logDose(medId,status){
+  const m=S.meds.find(x=>x.id===medId);if(!m)return;
+  const s=medStatus(m);
+  const ref=S.db.collection("logs").doc();
+  const p=S.pets.find(x=>x.id===m.petId);
+  w(()=>ref.set({petId:m.petId,medId,status,at:new Date().toISOString(),dose:m.dose||""}));
+  toast(status==="given"?`${m.name} logged for ${p?p.name:"pet"} · dose ${s.n+1}`:`Marked ${m.name} as not given`,()=>w(()=>ref.delete(),"Removed"));
+}
+
+document.addEventListener("click",async e=>{
+  const b=e.target.closest("[data-act]");if(!b)return;
+  const a=b.dataset.act,id=b.dataset.id;
+  if(a==="close"&&e.target!==b)return; // clicks inside sheet bubbling to scrim
+  switch(a){
+    case "close":closeSheet();break;
+    case "signin":signIn();break;
+    case "signout":stopSync();S.auth.signOut();break;
+    case "home":S.view="home";location.hash="";render();break;
+    case "open":S.view="pet";S.petId=id;location.hash="pet-"+id;render();scrollTo(0,0);break;
+    case "give":logDose(id,"given");break;
+    case "missed":logDose(id,"missed");break;
+    case "addpet":petForm();break;
+    case "editpet":petForm(S.pets.find(p=>p.id===id));break;
+    case "addmed":medForm({petId:S.petId});break;
+    case "editmed":medForm(S.meds.find(m=>m.id===id));break;
+    case "editlog":logForm(S.logs.find(l=>l.id===id));break;
+    case "savepet":{
+      if(!v("f-name")){document.getElementById("f-name").focus();return}
+      const body={name:v("f-name"),species:v("f-species"),sex:v("f-sex"),weight:v("f-weight"),birthday:v("f-bday"),birthdayEstimated:document.getElementById("f-est").checked,
+        color:v("f-color"),neutered:v("f-neut"),microchip:v("f-chip"),conditions:v("f-cond"),vet:v("f-vet"),vetPhone:v("f-vetph"),caretaker:v("f-care"),notes:v("f-notes")};
+      if(document.getElementById("f-passed")){body.passedOn=v("f-passed");body.passedCause=v("f-cause")}
+      closeSheet();
+      if(id) await w(()=>S.db.doc("pets/"+id).update(body),"Saved");
+      else {const ref=S.db.collection("pets").doc();await w(()=>ref.set(body),"Pet added");S.view="pet";S.petId=ref.id;render()}
+      break}
+    case "delpet":{
+      if(b.dataset.confirm!=="1"){b.dataset.confirm="1";b.textContent="Tap again to delete the pet, its meds and history";return}
+      closeSheet();
+      const meds=S.meds.filter(m=>m.petId===id),logs=S.logs.filter(l=>l.petId===id);
+      w(()=>{const b=S.db.batch();logs.forEach(l=>b.delete(S.db.doc("logs/"+l.id)));meds.forEach(m=>b.delete(S.db.doc("meds/"+m.id)));b.delete(S.db.doc("pets/"+id));return b.commit()},"Pet deleted");
+      S.view="home";render();break}
+    case "savemed":{
+      if(!v("m-name")){document.getElementById("m-name").focus();return}
+      const phases=[{every:num("m-e1",7),count:num("m-c1",0)}];
+      if(document.getElementById("m-has2").checked&&phases[0].count) phases.push({every:num("m-e2",30),count:num("m-c2",0)});
+      const body={name:v("m-name"),dose:v("m-dose"),phases,start:v("m-start"),notes:v("m-notes")};
+      const act=document.getElementById("m-active");if(act)body.active=act.checked;
+      closeSheet();
+      if(id) await w(()=>S.db.doc("meds/"+id).update(body),"Saved");
+      else await w(()=>S.db.collection("meds").doc().set({...body,petId:S.petId,active:true}),"Med added");
+      break}
+    case "delmed":{
+      if(b.dataset.confirm!=="1"){b.dataset.confirm="1";b.textContent="Tap again to delete this med and its history";return}
+      closeSheet();
+      const logs=S.logs.filter(l=>l.medId===id);
+      w(()=>{const b=S.db.batch();logs.forEach(l=>b.delete(S.db.doc("logs/"+l.id)));b.delete(S.db.doc("meds/"+id));return b.commit()},"Med deleted");break}
+    case "savelog":{
+      const at=v("l-at");
+      const body={at:at?new Date(at).toISOString():new Date().toISOString(),status:v("l-status"),dose:v("l-dose"),note:v("l-note")};
+      closeSheet();await w(()=>S.db.doc("logs/"+id).update(body),"Saved");break}
+    case "dellog":closeSheet();await w(()=>S.db.doc("logs/"+id).delete(),"Entry deleted");break;
+  }
+});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeSheet()});
+
+/* photo upload → small JPEG stored on the pet */
+document.addEventListener("change",e=>{
+  if(e.target.id!=="photo"||!e.target.files[0])return;
+  const file=e.target.files[0],img=new Image(),url=URL.createObjectURL(file);
+  img.onload=()=>{
+    const size=320,c=document.createElement("canvas");c.width=c.height=size;
+    const s=Math.min(img.width,img.height);
+    c.getContext("2d").drawImage(img,(img.width-s)/2,(img.height-s)/2,s,s,0,0,size,size);
+    URL.revokeObjectURL(url);
+    w(()=>S.db.doc("pets/"+S.petId).update({photo:c.toDataURL("image/jpeg",.8)}),"Photo updated");
+  };
+  img.src=url;
+});
+
+/* ---------- sync (Firebase, same project as Palengke List) ----------
+   Everything lives under households/main: vetPets/{id} · vetMeds/{id} · vetLogs/{id} */
+const FB_CONFIG={
+  apiKey:"AIzaSyD_7ZixwAGKZ6OVJ1_L1IiDf3GIJzTZLhE",
+  authDomain:"palengke-list-6f74a.firebaseapp.com",
+  projectId:"palengke-list-6f74a",
+  storageBucket:"palengke-list-6f74a.firebasestorage.app",
+  messagingSenderId:"567189795227",
+  appId:"1:567189795227:web:f4ff5767549ec92066713e"
+};
+const COL={pets:"vetPets",meds:"vetMeds",logs:"vetLogs"};
+let unsubs=[];
+function authError(e){
+  const c=e&&e.code;
+  if(c==="auth/unauthorized-domain")return "Sign-in is blocked for this website. In Firebase, add meow-w11.github.io under Authentication → Settings → Authorized domains.";
+  if(c==="auth/network-request-failed")return "No internet connection. Connect once to sign in; after that the app works offline.";
+  if(c==="auth/popup-closed-by-user"||c==="auth/cancelled-popup-request")return "";
+  return "Sign-in didn't work ("+(c||"unknown error")+"). Try again.";
+}
+async function signIn(){
+  S.authErr="";const p=new firebase.auth.GoogleAuthProvider();p.setCustomParameters({prompt:"select_account"});
+  try{await S.auth.signInWithPopup(p)}
+  catch(e){
+    if(["auth/popup-blocked","auth/operation-not-supported-in-this-environment"].includes(e.code)){try{await S.auth.signInWithRedirect(p);return}catch(e2){e=e2}}
+    S.authErr=authError(e);render();
+  }
+}
+function stopSync(){unsubs.forEach(u=>u());unsubs=[];S.loaded={pets:false,meds:false,logs:false}}
+async function importSeed(base){
+  // one-time move of the records kept in the old Claude vet card
+  try{
+    if(localStorage.getItem("vetcard-imported"))return;
+    const snap=await base.collection(COL.pets).limit(1).get({source:"server"});
+    if(!snap.empty){localStorage.setItem("vetcard-imported","1");return}
+    const res=await fetch("seed.json",{cache:"no-store"});if(!res.ok)return;
+    const seed=await res.json();
+    const b=S.fdb.batch();
+    for(const k of ["pets","meds","logs"])for(const [id,d] of Object.entries(seed[k]||{}))b.set(base.collection(COL[k]).doc(id),d);
+    await b.commit();localStorage.setItem("vetcard-imported","1");toast("Your cats' records were moved over");
+  }catch(_){}
+}
+function startSync(){
+  const base=S.fdb.doc("households/main");
+  const ref=p=>{const [c,i]=p.split("/");return base.collection(COL[c]).doc(i)};
+  S.db={collection:c=>base.collection(COL[c]),doc:ref,batch:()=>S.fdb.batch()};
+  const sub=(name,q)=>unsubs.push(q.onSnapshot(snap=>{
+    S[name]=snap.docs.map(d=>({id:d.id,...d.data()}));
+    S.loaded[name]=true;S.err=null;render();
+  },err=>{if(err.code==="permission-denied"){S.gate="denied"}else S.err="Records stopped loading ("+err.code+"). Close and reopen the app.";render()}));
+  sub("pets",base.collection(COL.pets));
+  sub("meds",base.collection(COL.meds));
+  sub("logs",base.collection(COL.logs).orderBy("at","desc").limit(1000));
+  importSeed(base);
+}
+(function boot(){
+  const h=location.hash.replace("#","");
+  if(h.startsWith("pet-")){S.view="pet";S.petId=h.slice(4)}
+  if(!window.firebase){S.gate=null;S.err="The app couldn't start. Close and reopen it.";render();return}
+  firebase.initializeApp(FB_CONFIG);
+  S.auth=firebase.auth();S.fdb=firebase.firestore();
+  S.fdb.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+  S.auth.getRedirectResult().catch(e=>{S.authErr=authError(e);render()});
+  S.auth.onAuthStateChanged(u=>{
+    S.user=u;stopSync();
+    if(u){S.gate=null;startSync()}else S.gate="signedout";
+    render();
+  });
+  addEventListener("online",()=>{S.online=true;render()});
+  addEventListener("offline",()=>{S.online=false;render()});
+  render();
+})();
+if("serviceWorker" in navigator)addEventListener("load",()=>navigator.serviceWorker.register("sw.js").catch(()=>{}));
+window.addEventListener("hashchange",()=>{const h=location.hash.replace("#","");if(h.startsWith("pet-")){S.view="pet";S.petId=h.slice(4)}else S.view="home";render()});
+</script>
+</body>
+</html>
